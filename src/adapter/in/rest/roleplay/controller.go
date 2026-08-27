@@ -1,4 +1,4 @@
-package problemanalysis
+package roleplay
 
 import (
 	"net/http"
@@ -11,7 +11,6 @@ import (
 	subtesAdapter "tandur.com/src/adapter/out/mysql/subtes/adapter"
 	subtesRepo "tandur.com/src/adapter/out/mysql/subtes/repository"
 	"tandur.com/src/app/service"
-	"tandur.com/src/util"
 )
 
 func SetupRoleplayController(r *gin.Engine) {
@@ -26,9 +25,8 @@ func SetupRoleplayController(r *gin.Engine) {
 	service := service.NewRoleplayService(&adapter, &assessorAdapter, &subtesAdapter)
 
 	r.GET("/roleplay/token/:token", func(ctx *gin.Context) {
-		util.OpenMySQL()
-		defer util.CloseMySQL()
-		data, err := service.GetByToken(ctx.Params.ByName("token"))
+		token := ctx.Params.ByName("token")
+		data, err := service.GetByToken(token)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, map[string]interface{}{
 				"error": err.Error(),

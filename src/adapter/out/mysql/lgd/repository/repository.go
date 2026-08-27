@@ -27,6 +27,8 @@ func (repo *LgdRepository) GetAll(filter domain.Lgd) (*[]entity.LgdMySql, error)
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.LgdMySql
 	for results.Next() {
 		var res entity.LgdMySql
@@ -35,6 +37,9 @@ func (repo *LgdRepository) GetAll(filter domain.Lgd) (*[]entity.LgdMySql, error)
 			return nil, err
 		}
 		data = append(data, res)
+	}
+	if err = results.Err(); err != nil {
+		return nil, err
 	}
 	return &data, nil
 }
@@ -53,12 +58,14 @@ func (repo *LgdRepository) GetById(id int64) (*entity.LgdMySql, error) {
 
 func (repo *LgdRepository) GetByToken(token string) (*[]entity.LgdMySql, error) {
 	db := util.GetMySQL()
-	query := fmt.Sprintf("SELECT token, tools_type, instruction_file, instruction, meeting_url, participant_instruction, start_date, end_date, assessor_1_id, assessor_2_id, assessor_3_id, assessor_4_id, asesi FROM %s WHERE token = '%s'", repo.tableName, token)
+	query := fmt.Sprintf("SELECT token, tools_type, instruction_file, instruction, meeting_url, participant_instruction, start_date, end_date, assessor_1_id, assessor_2_id, assessor_3_id, assessor_4_id, asesi FROM %s WHERE token = ?", repo.tableName)
 	log.Println(query)
-	results, err := db.Query(query)
+	results, err := db.Query(query, token)
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.LgdMySql
 	for results.Next() {
 		var res entity.LgdMySql
@@ -67,6 +74,9 @@ func (repo *LgdRepository) GetByToken(token string) (*[]entity.LgdMySql, error) 
 			return nil, err
 		}
 		data = append(data, res)
+	}
+	if err = results.Err(); err != nil {
+		return nil, err
 	}
 	return &data, nil
 }

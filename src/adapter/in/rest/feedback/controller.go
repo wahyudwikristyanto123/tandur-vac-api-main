@@ -7,7 +7,6 @@ import (
 	"tandur.com/src/adapter/out/mysql/feedback/adapter"
 	"tandur.com/src/adapter/out/mysql/feedback/repository"
 	"tandur.com/src/app/service"
-	"tandur.com/src/util"
 )
 
 func SetupFeedbackController(r *gin.Engine) {
@@ -16,12 +15,10 @@ func SetupFeedbackController(r *gin.Engine) {
 	service := service.NewFeedbackService(&adapter)
 
 	r.POST("/feedback/submit", func(ctx *gin.Context) {
-		util.OpenMySQL()
-		defer util.CloseMySQL()
 		var reqBody FeedbackRequest
 		err := ctx.BindJSON(&reqBody)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, map[string]interface{}{
+			ctx.JSON(http.StatusBadRequest, map[string]interface{}{
 				"error": err.Error(),
 			})
 			return
@@ -33,6 +30,8 @@ func SetupFeedbackController(r *gin.Engine) {
 			})
 			return
 		}
-		ctx.JSON(http.StatusOK, nil)
+		ctx.JSON(http.StatusOK, map[string]interface{}{
+			"message": "success",
+		})
 	})
 }

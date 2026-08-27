@@ -39,12 +39,14 @@ func (repo *InbasketRepository) GetFileByToken(token string) (*entity.InbasketFi
 
 func (repo *InbasketRepository) GetEventsByToken(token string) (*[]entity.InbasketEventMySql, error) {
 	db := util.GetMySQL()
-	query := fmt.Sprintf("SELECT token, tools_type, event_id, event_title, event_date, event_description, start_date, end_date FROM %s WHERE token = '%s'", repo.eventTableName, token)
+	query := fmt.Sprintf("SELECT token, tools_type, event_id, event_title, event_date, event_description, start_date, end_date FROM %s WHERE token = ?", repo.eventTableName)
 	log.Println(query)
-	results, err := db.Query(query)
+	results, err := db.Query(query, token)
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.InbasketEventMySql
 	for results.Next() {
 		var res entity.InbasketEventMySql
@@ -54,17 +56,22 @@ func (repo *InbasketRepository) GetEventsByToken(token string) (*[]entity.Inbask
 		}
 		data = append(data, res)
 	}
+	if err = results.Err(); err != nil {
+		return nil, err
+	}
 	return &data, nil
 }
 
 func (repo *InbasketRepository) GetEmailsByToken(token string) (*[]entity.InbasketEmailMySql, error) {
 	db := util.GetMySQL()
-	query := fmt.Sprintf("SELECT token, tools_type, email_id, email_from, email_cc, email_subject, email_body, email_send_date, created_at, updated_at, attachment_1, attachment_2, attachment_3, attachment_4, start_date, end_date FROM %s WHERE token = '%s'", repo.emailTableName, token)
+	query := fmt.Sprintf("SELECT token, tools_type, email_id, email_from, email_cc, email_subject, email_body, email_send_date, created_at, updated_at, attachment_1, attachment_2, attachment_3, attachment_4, start_date, end_date FROM %s WHERE token = ?", repo.emailTableName)
 	log.Println(query)
-	results, err := db.Query(query)
+	results, err := db.Query(query, token)
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.InbasketEmailMySql
 	for results.Next() {
 		var res entity.InbasketEmailMySql
@@ -74,21 +81,32 @@ func (repo *InbasketRepository) GetEmailsByToken(token string) (*[]entity.Inbask
 		}
 		data = append(data, res)
 	}
+	if err = results.Err(); err != nil {
+		return nil, err
+	}
 	return &data, nil
 }
 
 func (repo *InbasketRepository) GetMailboxByToken(token string, statuses []string) (*[]entity.InbasketMailboxMySql, error) {
 	db := util.GetMySQL()
-	var statusesWithQuotes []string = []string{}
-	for i := 0; i < len(statuses); i++ {
-		statusesWithQuotes = append(statusesWithQuotes, fmt.Sprintf("'%s'", statuses[i]))
+	if len(statuses) == 0 {
+		statuses = []string{"UNREAD", "READ", "DRAFT", "SENT", "REPLIED"}
 	}
-	query := fmt.Sprintf("SELECT id, email_from, email_cc, email_subject, email_body, email_send_date, attachment_1, attachment_2, attachment_3, attachment_4, created_at, updated_at, token, status, parent_id FROM %s WHERE token = '%s' AND status IN (%s) ORDER BY updated_at DESC", repo.mailboxTableName, token, strings.Join(statusesWithQuotes, ", "))
+	placeholders := make([]string, len(statuses))
+	args := make([]interface{}, 0, len(statuses)+1)
+	args = append(args, token)
+	for i, s := range statuses {
+		placeholders[i] = "?"
+		args = append(args, s)
+	}
+	query := fmt.Sprintf("SELECT id, email_from, email_cc, email_subject, email_body, email_send_date, attachment_1, attachment_2, attachment_3, attachment_4, created_at, updated_at, token, status, parent_id FROM %s WHERE token = ? AND status IN (%s) ORDER BY updated_at DESC", repo.mailboxTableName, strings.Join(placeholders, ", "))
 	log.Println(query)
-	results, err := db.Query(query)
+	results, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.InbasketMailboxMySql
 	for results.Next() {
 		var res entity.InbasketMailboxMySql
@@ -97,22 +115,36 @@ func (repo *InbasketRepository) GetMailboxByToken(token string, statuses []strin
 			return nil, err
 		}
 		data = append(data, res)
+	}
+	if err = results.Err(); err != nil {
+		return nil, err
 	}
 	return &data, nil
 }
 
 func (repo *InbasketRepository) SearchMailboxByToken(q string, token string, statuses []string) (*[]entity.InbasketMailboxMySql, error) {
 	db := util.GetMySQL()
-	var statusesWithQuotes []string = []string{}
-	for i := 0; i < len(statuses); i++ {
-		statusesWithQuotes = append(statusesWithQuotes, fmt.Sprintf("'%s'", statuses[i]))
+	if len(statuses) == 0 {
+		statuses = []string{"UNREAD", "READ", "DRAFT", "SENT", "REPLIED"}
 	}
-	query := fmt.Sprintf("SELECT id, email_from, email_cc, email_subject, email_body, email_send_date, attachment_1, attachment_2, attachment_3, attachment_4, created_at, updated_at, token, status, parent_id FROM %s WHERE token = '%s' AND status IN (%s) AND (email_subject OR email_body LIKE '%%%s%%') ORDER BY updated_at DESC", repo.mailboxTableName, token, strings.Join(statusesWithQuotes, ", "), q)
+	placeholders := make([]string, len(statuses))
+	args := make([]interface{}, 0, len(statuses)+3)
+	args = append(args, token)
+	for i, s := range statuses {
+		placeholders[i] = "?"
+		args = append(args, s)
+	}
+	likePattern := "%" + q + "%"
+	args = append(args, likePattern, likePattern)
+
+	query := fmt.Sprintf("SELECT id, email_from, email_cc, email_subject, email_body, email_send_date, attachment_1, attachment_2, attachment_3, attachment_4, created_at, updated_at, token, status, parent_id FROM %s WHERE token = ? AND status IN (%s) AND (email_subject LIKE ? OR email_body LIKE ?) ORDER BY updated_at DESC", repo.mailboxTableName, strings.Join(placeholders, ", "))
 	log.Println(query)
-	results, err := db.Query(query)
+	results, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.InbasketMailboxMySql
 	for results.Next() {
 		var res entity.InbasketMailboxMySql
@@ -121,6 +153,9 @@ func (repo *InbasketRepository) SearchMailboxByToken(q string, token string, sta
 			return nil, err
 		}
 		data = append(data, res)
+	}
+	if err = results.Err(); err != nil {
+		return nil, err
 	}
 	return &data, nil
 }
@@ -139,12 +174,14 @@ func (repo *InbasketRepository) GetMailboxById(id int64) (*entity.InbasketMailbo
 
 func (repo *InbasketRepository) GetMailboxByParentId(id int64) (*[]entity.InbasketMailboxMySql, error) {
 	db := util.GetMySQL()
-	query := fmt.Sprintf("SELECT id, email_from, email_cc, email_subject, email_body, email_send_date, attachment_1, attachment_2, attachment_3, attachment_4, created_at, updated_at, token, status, parent_id FROM %s WHERE parent_id = %d ORDER BY updated_at DESC", repo.mailboxTableName, id)
+	query := fmt.Sprintf("SELECT id, email_from, email_cc, email_subject, email_body, email_send_date, attachment_1, attachment_2, attachment_3, attachment_4, created_at, updated_at, token, status, parent_id FROM %s WHERE parent_id = ? ORDER BY updated_at DESC", repo.mailboxTableName)
 	log.Println(query)
-	results, err := db.Query(query)
+	results, err := db.Query(query, id)
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.InbasketMailboxMySql
 	for results.Next() {
 		var res entity.InbasketMailboxMySql
@@ -153,6 +190,9 @@ func (repo *InbasketRepository) GetMailboxByParentId(id int64) (*[]entity.Inbask
 			return nil, err
 		}
 		data = append(data, res)
+	}
+	if err = results.Err(); err != nil {
+		return nil, err
 	}
 	return &data, nil
 }
@@ -175,14 +215,18 @@ func (repo *InbasketRepository) InsertMailbox(data entity.InbasketMailboxMySql) 
 	 (email_from, email_cc, email_subject, email_body, email_send_date, 
 		attachment_1, attachment_2, attachment_3, attachment_4, 
 		created_at, updated_at, token, status, parent_id) 
-	 VALUES ('%s', '%s', '%s', '%s', '%s',
-	 '%s', '%s', '%s', '%s',
-		NOW(), NOW(), '%s', '%s', %d)`,
-		repo.mailboxTableName, data.EmailFrom, data.EmailCc, data.EmailSubject, data.EmailBody, data.EmailSendDate.Time.Format("2006-01-02 15:04:05"),
+	 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?)`,
+		repo.mailboxTableName,
+	)
+	var sendDateStr string
+	if !data.EmailSendDate.Time.IsZero() {
+		sendDateStr = data.EmailSendDate.Time.Format("2006-01-02 15:04:05")
+	}
+	result, err := db.Exec(query,
+		data.EmailFrom, data.EmailCc, data.EmailSubject, data.EmailBody, sendDateStr,
 		data.Attachment1.String, data.Attachment2.String, data.Attachment3.String, data.Attachment4.String,
-		data.Token.String, data.Status, data.ParentId.Int64)
-	// log.Println(query)
-	result, err := db.Exec(query)
+		data.Token.String, data.Status, data.ParentId.Int64,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -190,25 +234,31 @@ func (repo *InbasketRepository) InsertMailbox(data entity.InbasketMailboxMySql) 
 }
 
 func (repo *InbasketRepository) InsertMultiMailbox(data []entity.InbasketMailboxMySql) error {
+	if len(data) == 0 {
+		return nil
+	}
 	db := util.GetMySQL()
-	var query string = fmt.Sprintf(`INSERT INTO %s 
+	var valuePlaceholders []string
+	var args []interface{}
+	for _, item := range data {
+		valuePlaceholders = append(valuePlaceholders, "(?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?)")
+		var sendDateStr string
+		if !item.EmailSendDate.Time.IsZero() {
+			sendDateStr = item.EmailSendDate.Time.Format("2006-01-02 15:04:05")
+		}
+		args = append(args,
+			item.EmailFrom, item.EmailCc, item.EmailSubject, item.EmailBody, sendDateStr,
+			item.Attachment1.String, item.Attachment2.String, item.Attachment3.String, item.Attachment4.String,
+			item.Token.String, item.Status, item.ParentId.Int64,
+		)
+	}
+	query := fmt.Sprintf(`INSERT INTO %s 
 			(email_from, email_cc, email_subject, email_body, email_send_date, 
 				attachment_1, attachment_2, attachment_3, attachment_4, 
 				created_at, updated_at, token, status, parent_id) 
-			VALUES `, repo.mailboxTableName)
-	var valuePlaceholders []string
-	for i := 0; i < len(data); i++ {
-		valuePlaceholders = append(valuePlaceholders, fmt.Sprintf(`('%s', '%s', '%s', '%s', '%s',
-			'%s', '%s', '%s', '%s',
-				NOW(), NOW(), '%s', '%s', %d)`,
-			data[i].EmailFrom, data[i].EmailCc, data[i].EmailSubject, strings.ReplaceAll(data[i].EmailBody, "'", "\\'"), data[i].EmailSendDate.Time.Format("2006-01-02 15:04:05"),
-			data[i].Attachment1.String, data[i].Attachment2.String, data[i].Attachment3.String, data[i].Attachment4.String,
-			data[i].Token.String, data[i].Status, data[i].ParentId.Int64))
-	}
-	query += strings.Join(valuePlaceholders, ", ")
-	// log.Println(query)
-	// logger.WARN(query)
-	_, err := db.Exec(query)
+			VALUES %s`, repo.mailboxTableName, strings.Join(valuePlaceholders, ", "))
+
+	_, err := db.Exec(query, args...)
 	if err != nil {
 		return err
 	}
@@ -217,14 +267,20 @@ func (repo *InbasketRepository) InsertMultiMailbox(data []entity.InbasketMailbox
 
 func (repo *InbasketRepository) UpdateMailbox(data entity.InbasketMailboxMySql) error {
 	db := util.GetMySQL()
-	query := fmt.Sprintf(`UPDATE %s SET email_from='%s', email_cc='%s', email_subject='%s', email_body='%s', email_send_date='%s', 
-	attachment_1='%s', attachment_2='%s', attachment_3='%s', attachment_4='%s',
-	updated_at=NOW(), token='%s', status='%s', parent_id=%d WHERE id=%d`,
-		repo.mailboxTableName, data.EmailFrom, data.EmailCc, data.EmailSubject, data.EmailBody, data.EmailSendDate.Time.Format("2006-01-02 15:04:05"),
+	query := fmt.Sprintf(`UPDATE %s SET email_from=?, email_cc=?, email_subject=?, email_body=?, email_send_date=?, 
+	attachment_1=?, attachment_2=?, attachment_3=?, attachment_4=?, 
+	updated_at=NOW(), token=?, status=?, parent_id=? WHERE id=?`,
+		repo.mailboxTableName,
+	)
+	var sendDateStr string
+	if !data.EmailSendDate.Time.IsZero() {
+		sendDateStr = data.EmailSendDate.Time.Format("2006-01-02 15:04:05")
+	}
+	_, err := db.Exec(query,
+		data.EmailFrom, data.EmailCc, data.EmailSubject, data.EmailBody, sendDateStr,
 		data.Attachment1.String, data.Attachment2.String, data.Attachment3.String, data.Attachment4.String,
-		data.Token.String, data.Status, data.ParentId.Int64, data.Id)
-	log.Println(query)
-	_, err := db.Query(query)
+		data.Token.String, data.Status, data.ParentId.Int64, data.Id,
+	)
 	if err != nil {
 		return err
 	}
@@ -233,9 +289,8 @@ func (repo *InbasketRepository) UpdateMailbox(data entity.InbasketMailboxMySql) 
 
 func (repo *InbasketRepository) DeleteMailbox(id int64) error {
 	db := util.GetMySQL()
-	query := fmt.Sprintf("DELETE FROM %s WHERE id=%d", repo.mailboxTableName, id)
-	log.Println(query)
-	_, err := db.Query(query)
+	query := fmt.Sprintf("DELETE FROM %s WHERE id=?", repo.mailboxTableName)
+	_, err := db.Exec(query, id)
 	if err != nil {
 		return err
 	}
@@ -244,9 +299,8 @@ func (repo *InbasketRepository) DeleteMailbox(id int64) error {
 
 func (repo *InbasketRepository) DeleteByParentIdStatus(id int64, status string) error {
 	db := util.GetMySQL()
-	query := fmt.Sprintf("DELETE FROM %s WHERE parent_id=%d AND status = '%s'", repo.mailboxTableName, id, status)
-	log.Println(query)
-	_, err := db.Query(query)
+	query := fmt.Sprintf("DELETE FROM %s WHERE parent_id=? AND status = ?", repo.mailboxTableName)
+	_, err := db.Exec(query, id, status)
 	if err != nil {
 		return err
 	}

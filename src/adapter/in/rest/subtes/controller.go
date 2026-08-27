@@ -8,7 +8,6 @@ import (
 	"tandur.com/src/adapter/out/mysql/subtes/adapter"
 	"tandur.com/src/adapter/out/mysql/subtes/repository"
 	"tandur.com/src/app/service"
-	"tandur.com/src/util"
 )
 
 func SetupSubtesController(r *gin.Engine) {
@@ -17,9 +16,8 @@ func SetupSubtesController(r *gin.Engine) {
 	service := service.NewSubtesService(&adapter)
 
 	r.GET("/subtes/token/:token", func(ctx *gin.Context) {
-		util.OpenMySQL()
-		defer util.CloseMySQL()
-		data, err := service.GetByToken(ctx.Params.ByName("token"))
+		token := ctx.Params.ByName("token")
+		data, err := service.GetByToken(token)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, map[string]interface{}{
 				"error": err.Error(),
@@ -30,12 +28,10 @@ func SetupSubtesController(r *gin.Engine) {
 	})
 
 	r.GET("/subtes/result/:id", func(ctx *gin.Context) {
-		util.OpenMySQL()
-		defer util.CloseMySQL()
 		id, err := strconv.ParseInt(ctx.Params.ByName("id"), 10, 64)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, map[string]interface{}{
-				"error": err.Error(),
+			ctx.JSON(http.StatusBadRequest, map[string]interface{}{
+				"error": "Invalid id parameter",
 			})
 			return
 		}
@@ -50,12 +46,10 @@ func SetupSubtesController(r *gin.Engine) {
 	})
 
 	r.PATCH("/subtes/status", func(ctx *gin.Context) {
-		util.OpenMySQL()
-		defer util.CloseMySQL()
 		var reqBody UpdateRequest
 		err := ctx.BindJSON(&reqBody)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, map[string]interface{}{
+			ctx.JSON(http.StatusBadRequest, map[string]interface{}{
 				"error": err.Error(),
 			})
 			return
@@ -67,16 +61,16 @@ func SetupSubtesController(r *gin.Engine) {
 			})
 			return
 		}
-		ctx.JSON(http.StatusOK, nil)
+		ctx.JSON(http.StatusOK, map[string]interface{}{
+			"message": "success",
+		})
 	})
 
 	r.POST("/subtes/submit", func(ctx *gin.Context) {
-		util.OpenMySQL()
-		defer util.CloseMySQL()
 		var reqBody SubmitRequest
 		err := ctx.BindJSON(&reqBody)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, map[string]interface{}{
+			ctx.JSON(http.StatusBadRequest, map[string]interface{}{
 				"error": err.Error(),
 			})
 			return
@@ -88,6 +82,8 @@ func SetupSubtesController(r *gin.Engine) {
 			})
 			return
 		}
-		ctx.JSON(http.StatusOK, nil)
+		ctx.JSON(http.StatusOK, map[string]interface{}{
+			"message": "success",
+		})
 	})
 }

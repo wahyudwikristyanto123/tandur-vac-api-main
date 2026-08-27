@@ -27,6 +27,8 @@ func (repo *OneOnOneRepository) GetAll(filter domain.OneOnOne) (*[]entity.OneOnO
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.OneOnOneMySql
 	for results.Next() {
 		var res entity.OneOnOneMySql
@@ -35,6 +37,9 @@ func (repo *OneOnOneRepository) GetAll(filter domain.OneOnOne) (*[]entity.OneOnO
 			return nil, err
 		}
 		data = append(data, res)
+	}
+	if err = results.Err(); err != nil {
+		return nil, err
 	}
 	return &data, nil
 }
@@ -53,12 +58,14 @@ func (repo *OneOnOneRepository) GetById(id int64) (*entity.OneOnOneMySql, error)
 
 func (repo *OneOnOneRepository) GetByToken(token string) (*[]entity.OneOnOneMySql, error) {
 	db := util.GetMySQL()
-	query := fmt.Sprintf("SELECT token, tools_type, meeting_url, start_date, end_date, assessor_1_id, assessor_2_id, assessor_3_id, assessor_4_id FROM %s WHERE token = '%s'", repo.tableName, token)
+	query := fmt.Sprintf("SELECT token, tools_type, meeting_url, start_date, end_date, assessor_1_id, assessor_2_id, assessor_3_id, assessor_4_id FROM %s WHERE token = ?", repo.tableName)
 	log.Println(query)
-	results, err := db.Query(query)
+	results, err := db.Query(query, token)
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.OneOnOneMySql
 	for results.Next() {
 		var res entity.OneOnOneMySql
@@ -67,6 +74,9 @@ func (repo *OneOnOneRepository) GetByToken(token string) (*[]entity.OneOnOneMySq
 			return nil, err
 		}
 		data = append(data, res)
+	}
+	if err = results.Err(); err != nil {
+		return nil, err
 	}
 	return &data, nil
 }

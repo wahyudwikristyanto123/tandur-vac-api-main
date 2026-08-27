@@ -27,6 +27,8 @@ func (repo *AssessorRepository) GetAll(filter domain.Assessor) (*[]entity.ApUser
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.ApUserMySql
 	for results.Next() {
 		var res entity.ApUserMySql
@@ -35,6 +37,9 @@ func (repo *AssessorRepository) GetAll(filter domain.Assessor) (*[]entity.ApUser
 			return nil, err
 		}
 		data = append(data, res)
+	}
+	if err = results.Err(); err != nil {
+		return nil, err
 	}
 	return &data, nil
 }

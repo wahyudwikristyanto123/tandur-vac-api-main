@@ -3,6 +3,7 @@ package util
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -12,15 +13,41 @@ import (
 var mysql *sql.DB
 
 func OpenMySQL() {
-	uri := fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=true&multiStatements=true", os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOST"), os.Getenv("DB_NAME"))
+	if mysql != nil {
+		return
+	}
+	dbUser := os.Getenv("DB_USER")
+	if dbUser == "" {
+		dbUser = "root"
+	}
+	dbPass := os.Getenv("DB_PASSWORD")
+	dbHost := os.Getenv("DB_HOST")
+	if dbHost == "" {
+		dbHost = "127.0.0.1:3306"
+	}
+	dbName := os.Getenv("DB_NAME")
+	if dbName == "" {
+		dbName = "dev_tandur"
+	}
+
+	uri := fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=true&multiStatements=true&charset=utf8mb4&loc=Local", dbUser, dbPass, dbHost, dbName)
 	db, err := sql.Open("mysql", uri)
 	if err != nil {
-		panic(err.Error())
+		log.Fatalf("[MySQL] Failed to open database: %v", err)
 	}
-	db.SetConnMaxLifetime(time.Minute * 3)
-	db.SetMaxOpenConns(10)
+
+	// Connection Pool Settings for high-performance concurrent throughput
+	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(10)
-	// defer db.Close()
+	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetConnMaxIdleTime(1 * time.Minute)
+
+	if err := db.Ping(); err != nil {
+		log.Printf("[MySQL Warning] Could not ping database at %s: %v", dbHost, err)
+	} else {
+		log.Println("[MySQL] Database connection pool initialized successfully")
+	}
+
 	mysql = db
 }
 
@@ -29,5 +56,8 @@ func GetMySQL() *sql.DB {
 }
 
 func CloseMySQL() {
-	mysql.Close()
+	if mysql != nil {
+		_ = mysql.Close()
+		mysql = nil
+	}
 }

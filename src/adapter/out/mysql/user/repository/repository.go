@@ -27,6 +27,8 @@ func (repo *UserRepository) GetAll(filter domain.User) (*[]entity.UserMySql, err
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.UserMySql
 	for results.Next() {
 		var res entity.UserMySql
@@ -35,6 +37,9 @@ func (repo *UserRepository) GetAll(filter domain.User) (*[]entity.UserMySql, err
 			return nil, err
 		}
 		data = append(data, res)
+	}
+	if err = results.Err(); err != nil {
+		return nil, err
 	}
 	return &data, nil
 }
@@ -53,12 +58,14 @@ func (repo *UserRepository) GetById(id int64) (*entity.UserMySql, error) {
 
 func (repo *UserRepository) GetByToken(token string) (*[]entity.UserMySql, error) {
 	db := util.GetMySQL()
-	query := fmt.Sprintf("SELECT token, username, email, password, asesi FROM %s WHERE token = '%s'", repo.tableName, token)
+	query := fmt.Sprintf("SELECT token, username, email, password, asesi FROM %s WHERE token = ?", repo.tableName)
 	log.Println(query)
-	results, err := db.Query(query)
+	results, err := db.Query(query, token)
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.UserMySql
 	for results.Next() {
 		var res entity.UserMySql
@@ -67,6 +74,9 @@ func (repo *UserRepository) GetByToken(token string) (*[]entity.UserMySql, error
 			return nil, err
 		}
 		data = append(data, res)
+	}
+	if err = results.Err(); err != nil {
+		return nil, err
 	}
 	return &data, nil
 }

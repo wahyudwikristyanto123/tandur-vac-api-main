@@ -9,7 +9,6 @@ import (
 	"tandur.com/src/adapter/out/mysql/qna/repository"
 	"tandur.com/src/app/service"
 	"tandur.com/src/domain"
-	"tandur.com/src/util"
 )
 
 func SetupQnaController(r *gin.Engine) {
@@ -18,9 +17,8 @@ func SetupQnaController(r *gin.Engine) {
 	service := service.NewQnaService(&adapter)
 
 	r.GET("/qna/token/:token", func(ctx *gin.Context) {
-		util.OpenMySQL()
-		defer util.CloseMySQL()
-		data, err := service.GetByToken(ctx.Params.ByName("token"))
+		token := ctx.Params.ByName("token")
+		data, err := service.GetByToken(token)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, map[string]interface{}{
 				"error": err.Error(),
@@ -31,12 +29,10 @@ func SetupQnaController(r *gin.Engine) {
 	})
 
 	r.GET("/qna/id/:id", func(ctx *gin.Context) {
-		util.OpenMySQL()
-		defer util.CloseMySQL()
 		id, err := strconv.ParseInt(ctx.Params.ByName("id"), 10, 64)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, map[string]interface{}{
-				"error": err.Error(),
+			ctx.JSON(http.StatusBadRequest, map[string]interface{}{
+				"error": "Invalid id parameter",
 			})
 			return
 		}
@@ -51,8 +47,6 @@ func SetupQnaController(r *gin.Engine) {
 	})
 
 	r.POST("/qna/result", func(ctx *gin.Context) {
-		util.OpenMySQL()
-		defer util.CloseMySQL()
 		var data domain.QnaResultRequest
 		if err := ctx.ShouldBindJSON(&data); err != nil {
 			ctx.JSON(http.StatusBadRequest, map[string]interface{}{
@@ -73,8 +67,6 @@ func SetupQnaController(r *gin.Engine) {
 	})
 
 	r.POST("/qna/results", func(ctx *gin.Context) {
-		util.OpenMySQL()
-		defer util.CloseMySQL()
 		var data []domain.QnaResultRequest
 		if err := ctx.ShouldBindJSON(&data); err != nil {
 			ctx.JSON(http.StatusBadRequest, map[string]interface{}{
@@ -95,9 +87,8 @@ func SetupQnaController(r *gin.Engine) {
 	})
 
 	r.GET("/qna/results/token/:token", func(ctx *gin.Context) {
-		util.OpenMySQL()
-		defer util.CloseMySQL()
-		data, err := service.GetResultsByToken(ctx.Params.ByName("token"))
+		token := ctx.Params.ByName("token")
+		data, err := service.GetResultsByToken(token)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, map[string]interface{}{
 				"error": err.Error(),

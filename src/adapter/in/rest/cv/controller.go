@@ -7,7 +7,6 @@ import (
 	"tandur.com/src/adapter/out/mysql/cv/adapter"
 	"tandur.com/src/adapter/out/mysql/cv/repository"
 	"tandur.com/src/app/service"
-	"tandur.com/src/util"
 )
 
 func SetupCvController(r *gin.Engine) {
@@ -16,9 +15,8 @@ func SetupCvController(r *gin.Engine) {
 	service := service.NewCvService(&adapter)
 
 	r.GET("/cv/token/:token", func(ctx *gin.Context) {
-		util.OpenMySQL()
-		defer util.CloseMySQL()
-		data, err := service.GetByToken(ctx.Params.ByName("token"))
+		token := ctx.Params.ByName("token")
+		data, err := service.GetByToken(token)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, map[string]interface{}{
 				"error": err.Error(),
@@ -29,12 +27,10 @@ func SetupCvController(r *gin.Engine) {
 	})
 
 	r.POST("/cv/submit", func(ctx *gin.Context) {
-		util.OpenMySQL()
-		defer util.CloseMySQL()
 		var reqBody SubmitRequest
 		err := ctx.BindJSON(&reqBody)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, map[string]interface{}{
+			ctx.JSON(http.StatusBadRequest, map[string]interface{}{
 				"error": err.Error(),
 			})
 			return
@@ -46,6 +42,8 @@ func SetupCvController(r *gin.Engine) {
 			})
 			return
 		}
-		ctx.JSON(http.StatusOK, nil)
+		ctx.JSON(http.StatusOK, map[string]interface{}{
+			"message": "success",
+		})
 	})
 }

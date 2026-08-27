@@ -27,6 +27,8 @@ func (repo *ProblemAnalysisRepository) GetAll(filter domain.ProblemAnalysis) (*[
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.ProblemAnalysisMySql
 	for results.Next() {
 		var res entity.ProblemAnalysisMySql
@@ -35,6 +37,9 @@ func (repo *ProblemAnalysisRepository) GetAll(filter domain.ProblemAnalysis) (*[
 			return nil, err
 		}
 		data = append(data, res)
+	}
+	if err = results.Err(); err != nil {
+		return nil, err
 	}
 	return &data, nil
 }
@@ -53,12 +58,14 @@ func (repo *ProblemAnalysisRepository) GetById(id int64) (*entity.ProblemAnalysi
 
 func (repo *ProblemAnalysisRepository) GetByToken(token string) (*[]entity.ProblemAnalysisMySql, error) {
 	db := util.GetMySQL()
-	query := fmt.Sprintf("SELECT token, tools_type, instruction_file, instruction, company_profile_file, company_profile, question, start_date, end_date FROM %s WHERE token = '%s'", repo.tableName, token)
+	query := fmt.Sprintf("SELECT token, tools_type, instruction_file, instruction, company_profile_file, company_profile, question, start_date, end_date FROM %s WHERE token = ?", repo.tableName)
 	log.Println(query)
-	results, err := db.Query(query)
+	results, err := db.Query(query, token)
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.ProblemAnalysisMySql
 	for results.Next() {
 		var res entity.ProblemAnalysisMySql
@@ -67,6 +74,9 @@ func (repo *ProblemAnalysisRepository) GetByToken(token string) (*[]entity.Probl
 			return nil, err
 		}
 		data = append(data, res)
+	}
+	if err = results.Err(); err != nil {
+		return nil, err
 	}
 	return &data, nil
 }

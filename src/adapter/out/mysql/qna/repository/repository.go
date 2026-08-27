@@ -27,6 +27,8 @@ func (repo *QnaRepository) GetAll(filter domain.Qna) (*[]entity.QnaMySql, error)
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.QnaMySql
 	for results.Next() {
 		var res entity.QnaMySql
@@ -36,17 +38,22 @@ func (repo *QnaRepository) GetAll(filter domain.Qna) (*[]entity.QnaMySql, error)
 		}
 		data = append(data, res)
 	}
+	if err = results.Err(); err != nil {
+		return nil, err
+	}
 	return &data, nil
 }
 
 func (repo *QnaRepository) GetDetailsById(id int64) (*[]entity.QnaDetailMySql, error) {
 	db := util.GetMySQL()
-	query := fmt.Sprintf("SELECT id, trx_ac_question_answer_id, head_question, question, created_at, updated_at FROM %s WHERE trx_ac_question_answer_id = %d", "trx_ac_question_answer_detail", id)
+	query := fmt.Sprintf("SELECT id, trx_ac_question_answer_id, head_question, question, created_at, updated_at FROM %s WHERE trx_ac_question_answer_id = ?", "trx_ac_question_answer_detail")
 	log.Println(query)
-	results, err := db.Query(query)
+	results, err := db.Query(query, id)
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.QnaDetailMySql
 	for results.Next() {
 		var res entity.QnaDetailMySql
@@ -55,6 +62,9 @@ func (repo *QnaRepository) GetDetailsById(id int64) (*[]entity.QnaDetailMySql, e
 			return nil, err
 		}
 		data = append(data, res)
+	}
+	if err = results.Err(); err != nil {
+		return nil, err
 	}
 	return &data, nil
 }
@@ -73,12 +83,14 @@ func (repo *QnaRepository) GetById(id int64) (*entity.QnaMySql, error) {
 
 func (repo *QnaRepository) GetByToken(token string) (*[]entity.QnaMySql, error) {
 	db := util.GetMySQL()
-	query := fmt.Sprintf("SELECT qna_id, detail_id, token, instruction_file, instruction, type_qna, start_date, end_date FROM %s WHERE token = '%s'", repo.tableName, token)
+	query := fmt.Sprintf("SELECT qna_id, detail_id, token, instruction_file, instruction, type_qna, start_date, end_date FROM %s WHERE token = ?", repo.tableName)
 	log.Println(query)
-	results, err := db.Query(query)
+	results, err := db.Query(query, token)
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.QnaMySql
 	for results.Next() {
 		var res entity.QnaMySql
@@ -88,15 +100,18 @@ func (repo *QnaRepository) GetByToken(token string) (*[]entity.QnaMySql, error) 
 		}
 		data = append(data, res)
 	}
+	if err = results.Err(); err != nil {
+		return nil, err
+	}
 	return &data, nil
 }
 
 func (repo *QnaRepository) UpsertResult(data entity.QnaResultRequestMysql) error {
 	db := util.GetMySQL()
-	var query string = fmt.Sprintf(`INSERT INTO trx_ac_qna_result 
+	query := `INSERT INTO trx_ac_qna_result 
 			(question_id, qna_id, token, result) 
-			VALUES ('%d', '%d', '%s', '%s') ON DUPLICATE KEY UPDATE result = '%s'`, data.QuestionId, data.QnaId, data.Token, data.Result.String, data.Result.String)
-	_, err := db.Exec(query)
+			VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE result = VALUES(result)`
+	_, err := db.Exec(query, data.QuestionId, data.QnaId, data.Token, data.Result.String)
 	if err != nil {
 		return err
 	}
@@ -105,12 +120,14 @@ func (repo *QnaRepository) UpsertResult(data entity.QnaResultRequestMysql) error
 
 func (repo *QnaRepository) GetResultsByToken(token string) (*[]entity.QnaResultRequestMysql, error) {
 	db := util.GetMySQL()
-	query := fmt.Sprintf("SELECT question_id, qna_id, token, result FROM trx_ac_qna_result WHERE token = '%s'", token)
+	query := "SELECT question_id, qna_id, token, result FROM trx_ac_qna_result WHERE token = ?"
 	log.Println(query)
-	results, err := db.Query(query)
+	results, err := db.Query(query, token)
 	if err != nil {
 		return nil, err
 	}
+	defer results.Close()
+
 	var data []entity.QnaResultRequestMysql
 	for results.Next() {
 		var res entity.QnaResultRequestMysql
@@ -119,6 +136,9 @@ func (repo *QnaRepository) GetResultsByToken(token string) (*[]entity.QnaResultR
 			return nil, err
 		}
 		data = append(data, res)
+	}
+	if err = results.Err(); err != nil {
+		return nil, err
 	}
 	return &data, nil
 }

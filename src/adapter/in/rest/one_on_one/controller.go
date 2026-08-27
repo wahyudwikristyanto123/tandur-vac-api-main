@@ -1,4 +1,4 @@
-package problemanalysis
+package ononone
 
 import (
 	"net/http"
@@ -9,7 +9,6 @@ import (
 	"tandur.com/src/adapter/out/mysql/one_on_one/adapter"
 	"tandur.com/src/adapter/out/mysql/one_on_one/repository"
 	"tandur.com/src/app/service"
-	"tandur.com/src/util"
 )
 
 func SetupOneOnOneController(r *gin.Engine) {
@@ -20,9 +19,8 @@ func SetupOneOnOneController(r *gin.Engine) {
 	service := service.NewOneOnOneService(&adapter, &assessorAdapter)
 
 	r.GET("/1on1/token/:token", func(ctx *gin.Context) {
-		util.OpenMySQL()
-		defer util.CloseMySQL()
-		data, err := service.GetByToken(ctx.Params.ByName("token"))
+		token := ctx.Params.ByName("token")
+		data, err := service.GetByToken(token)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, map[string]interface{}{
 				"error": err.Error(),
