@@ -1,0 +1,15 @@
+version: '3'
+services:
+  db:
+    image: mariadb:11
+    ports:
+      - 3306:3306
+    environment:
+      - MARIADB_DATABASE=dev_tandur
+      - MARIADB_USER=devtandurusr
+      - MARIADB_PASSWORD=D3vp4$$_T4ndur#
+      - MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=yes
+  redis:
+    image: redis
+    ports:
+      - 6379:6379
