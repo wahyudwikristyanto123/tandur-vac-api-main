@@ -28,6 +28,7 @@ func LoadEnv(path string) {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
+		line = strings.TrimPrefix(line, "export ")
 		parts := strings.SplitN(line, "=", 2)
 		if len(parts) == 2 {
 			key := strings.TrimSpace(parts[0])
@@ -46,6 +47,7 @@ func OpenMySQL() {
 	}
 
 	LoadEnv(".env")
+	LoadEnv("environment.local")
 
 	dbUser := os.Getenv("DB_USERNAME")
 	if dbUser == "" {

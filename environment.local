@@ -1,5 +1,8 @@
-export DB_HOST='localhost'
-export DB_USER='root'
-export DB_PASSWORD=''
-export DB_NAME='dev_tandur'
+export DB_HOST='149.28.136.226'
+export DB_PORT='3306'
+export DB_USER='admin'
+export DB_USERNAME='admin'
+export DB_PASSWORD='4dm!n_23#'
+export DB_NAME='tandur_vac'
+export DB_DATABASE='tandur_vac'
 export PORT=3030
