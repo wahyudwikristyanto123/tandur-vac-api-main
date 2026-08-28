@@ -1,3 +1,5 @@
 logs/*
 environment
 set-env.sh
+.env
+environment.local
